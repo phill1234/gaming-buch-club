@@ -1,0 +1,126 @@
+name: build and deploy backend
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - backend/**
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment which should be deployed'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+env:
+  # Use docker.io for Docker Hub if empty
+  REGISTRY: ghcr.io
+  # github.repository as <account>/<repo>
+  IMAGE_NAME: ${{ github.repository }}-backend
+  DOCKER_IMAGE_TAG: ${{ github.run_number }}
+  DEPLOY_VERSION_PARAMETER_NAME: backend_version
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_PASSWORD: pa55w0rt
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v3
+
+      - name: "Setup Docker buildx"
+        uses: docker/setup-buildx-action@v2
+
+      - name: "Log into registry ${{ env.REGISTRY }}"
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build Docker image"
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          load: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: "Test Docker Image"
+        run: |
+          docker run --network host -e DATABASE_URL="postgres://postgres:pa55w0rt@localhost:5432/test_db" --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }} ./make.sh test
+
+      - name: "Push Docker image"
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: "Set up caching for pip"
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10.9
+          cache: pip
+
+      - name: "Install Ansible"
+        working-directory: ./deployment
+        run: |
+          pip install -r requirements.txt
+
+      - name: "Start ssh agent and add ssh key to ssh-agent"
+        working-directory: ./deployment
+        # needed to use ssh-agent in next step
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null &&
+          echo ${{ secrets.VAULT_PASSWORD }} | ansible-vault view ci_ssh_key --vault-password-file /bin/cat | ssh-add -
+
+      - name: "Deploy backend"
+        if: github.event_name != 'pull_request'
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        working-directory: ./deployment
+        run: |
+          ./make.sh deploy --vault_password ${{ secrets.VAULT_PASSWORD }} --environment ${{ github.event.inputs.environment || 'production' }} --service backend

@@ -1,0 +1,51 @@
+name: deploy infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment which infrastructure should be deployed'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+jobs:
+  deploy-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "Set up Ansible for deployment"
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.1
+
+      - name: "Cache ansible pip package"
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ hashFiles('./deployment/requirements.txt') }}
+
+      - name: "Install python dependencies like ansible and hcloud"
+        working-directory: ./deployment
+        run: |
+          pip install -r requirements.txt
+
+      - name: "Start ssh agent and add ssh key to ssh-agent"
+        working-directory: ./deployment
+        env:
+          # needed to use ssh-agent in next step
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null &&
+          echo ${{ secrets.VAULT_PASSWORD }} | ansible-vault view ci_ssh_key --vault-password-file /bin/cat | ssh-add -
+
+      - name: "Deploy infrastructure"
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        if: github.event_name != 'pull_request'
+        working-directory: ./deployment
+        run: |
+          ./make.sh infrastructure --vault_password ${{ secrets.VAULT_PASSWORD }} --environment ${{ github.event.inputs.environment }}

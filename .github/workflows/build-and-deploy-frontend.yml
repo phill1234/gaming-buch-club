@@ -1,0 +1,91 @@
+name: build and deploy frontend
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - frontend/**
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment which should be deployed'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+env:
+  # Use docker.io for Docker Hub if empty
+  REGISTRY: ghcr.io
+  # github.repository as <account>/<repo>
+  IMAGE_NAME: ${{ github.repository }}-frontend
+  DOCKER_IMAGE_TAG: ${{ github.run_number }}
+  DEPLOY_VERSION_PARAMETER_NAME: frontend_version
+
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v3
+
+      - name: "Setup Docker buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Log into registry ${{ env.REGISTRY }}"
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build and push Docker image"
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: "Set up caching for pip"
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10.9
+          cache: 'pip'
+
+      - name: "Install Ansible"
+        working-directory: ./deployment
+        run: |
+          pip install -r requirements.txt
+
+      - name: "Start ssh agent and add ssh key to ssh-agent"
+        working-directory: ./deployment
+        # needed to use ssh-agent in next step
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null &&
+          echo ${{ secrets.VAULT_PASSWORD }} | ansible-vault view ci_ssh_key --vault-password-file /bin/cat | ssh-add -
+
+      - name: "Deploy frontend"
+        if: github.event_name != 'pull_request'
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        working-directory: ./deployment
+        run: |
+          ./make.sh deploy --vault_password ${{ secrets.VAULT_PASSWORD }} --environment ${{ github.event.inputs.environment || 'production' }} --service frontend

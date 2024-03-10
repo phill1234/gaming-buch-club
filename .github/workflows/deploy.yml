@@ -1,0 +1,58 @@
+name: deploy
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - deployment/**
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment which should be deployed'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "Set up Ansible for deployment"
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.10.9
+
+      # Cache ansible pip package
+      - name: "Cache ansible pip package"
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ hashFiles('./deployment/requirements.txt') }}
+
+      - name: Install python dependencies like ansible and hcloud
+        working-directory: ./deployment
+        run: |
+          pip install -r requirements.txt
+
+      - name: "Start ssh agent and add ssh key to ssh-agent"
+        working-directory: ./deployment
+        # needed to use ssh-agent in next step
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null &&
+          echo ${{ secrets.VAULT_PASSWORD }} | ansible-vault view ci_ssh_key --vault-password-file /bin/cat | ssh-add -
+
+      - name: "Deploy All Services"
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        if: github.event_name != 'pull_request'
+        working-directory: ./deployment
+        run: |
+          ./make.sh deploy --vault_password ${{ secrets.VAULT_PASSWORD }} --environment ${{ github.event.inputs.environment || 'production' }}
