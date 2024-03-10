@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: {{ docker_registry_host }}/{{frontend_image_name}}:{{ frontend_version }}
+        image: {{ docker_registry_host }}/{{project_name}}-frontend:{{ frontend_version }}
         imagePullPolicy: Always
         ports:
         - containerPort: 80

@@ -19,7 +19,7 @@ spec:
         triggerUpdateLabel: "{{ ansible_date_time.iso8601_basic }}"
     spec:
       containers:
-      - image: {{docker_registry_host}}/{{auth_proxy_image_name}}:{{ auth_proxy_version }}
+      - image: {{docker_registry_host}}/{{project_name}}-auth-proxy:{{ auth_proxy_version }}
         name: auth-proxy
         env:
         - name: JWKS_URL

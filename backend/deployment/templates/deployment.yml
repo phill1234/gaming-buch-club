@@ -63,7 +63,7 @@ spec:
                        echo \"ALTER DATABASE $APP_DATABASE_NAME OWNER TO $APP_DATABASE_USERNAME\" | psql -h $POSTGRES_HOST -U $POSTGRES_USER"
           ]
       containers:
-      - image: {{docker_registry_host}}/{{backend_image_name}}:{{backend_version}}
+      - image: {{docker_registry_host}}/{{project_name}}-backend:{{backend_version}}
         name: backend
         envFrom:
         - secretRef:

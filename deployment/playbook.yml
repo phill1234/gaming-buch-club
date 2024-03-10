@@ -40,6 +40,11 @@
         name: prepare-kubeconfig
       tags: infrastructure
 
+    - name: "install python dependencies"
+      import_role:
+        name: python
+      tags: infrastructure
+
 
 # DEPLOYMENT OF SERVICES
 - hosts: hcloud_type_master
