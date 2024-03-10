@@ -1,0 +1,20 @@
+# refactor to use kubernetes core modules for frontend
+
+- name: "apply frontend service"
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'service.yml') }}"
+  tags: frontend
+
+- name: "apply frontend ingress"
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'ingress.yml') }}"
+  tags: frontend
+
+- name: "apply frontend deployment"
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'deployment.yml') }}"
+  tags: frontend
+

@@ -1,0 +1,11 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: auth-proxy
+  namespace: default
+spec:
+  selector:
+    app: auth-proxy
+  ports:
+    - port: 80
+      targetPort: 9090

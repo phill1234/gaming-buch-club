@@ -1,0 +1,20 @@
+# refactor to use kubernetes core modules
+
+- name: "apply auth-proxy traefik middleware"
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'traefik-middleware.yml') }}"
+  tags: auth-proxy
+
+- name: "apply auth-proxy service"
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'service.yml') }}"
+  tags: auth-proxy
+
+- name: "apply auth-proxy deployment"
+  k8s:
+    state: present
+    definition: "{{ lookup('template', 'deployment.yml') }}"
+  tags: auth-proxy
+

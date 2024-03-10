@@ -1,0 +1,16 @@
+.DS_Store
+.idea/
+.cache/
+__pycache__/
+
+# We need to ignore and allow level by level due to git restrictions
+media/*
+!media/image/
+media/image/*
+!media/image/upload/
+media/image/upload/*
+!media/image/upload/v1/
+media/image/upload/v1/*
+!media/image/upload/v1/test_data/
+
+venv

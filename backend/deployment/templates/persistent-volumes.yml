@@ -1,0 +1,34 @@
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: backend-media-pv
+  namespace: default
+  labels:
+    app: backend
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/srv/backend/media"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-media-pvc
+  namespace: default
+  labels:
+    app: backend
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+

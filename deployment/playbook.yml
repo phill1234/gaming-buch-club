@@ -1,0 +1,102 @@
+# PROVISIONING INFRASTRUCTURE
+- hosts: provision-infrastructure
+  connection: local
+  gather_facts: false
+  vars:
+    # locally use the default python interpreter
+    ansible_python_interpreter: python
+  tasks:
+    - import_role:
+        name: "hetzner-server"
+      vars:
+        node_count: "{{ master_count }}"
+        node_type: master
+      tags: infrastructure
+
+    - include_role:
+        name: "dns"
+      tags: infrastructure
+
+# CHECK INFRASTRUCTURE READY AND PROVISION EVERYTHING WE NEED
+- hosts: hcloud
+  gather_facts: true
+  tasks:
+    - name: "Wait for SSH to come up"
+      vars:
+        ansible_python_interpreter: python
+      wait_for:
+        port: 22
+        host: "{{ ansible_host }}"
+        timeout: 300
+      tags: infrastructure
+      connection: local
+
+    - import_role:
+        name: k3s
+      tags: infrastructure,k3s
+
+    - name: "prepare kubeconfig for k8s ansible module"
+      import_role:
+        name: prepare-kubeconfig
+      tags: infrastructure
+
+
+# DEPLOYMENT OF SERVICES
+- hosts: hcloud_type_master
+  run_once: true
+  tasks:
+    - name: "deploy hetzner-csi-provider"
+      import_role:
+        name: hetzner-csi-provider
+      tags: hetzner-csi-provider
+
+    - name: "deploy docker-secrets"
+      import_role:
+        name: docker-secrets
+      tags: docker-secrets
+
+    - name: "deploy cert-manager"
+      import_role:
+        name: cert-manager
+      tags: cert-manager
+
+    - name: "deploy postgres"
+      import_role:
+        name: postgres
+      tags: postgres
+
+    - name: "copy auth-proxy role into deployment"
+      connection: local
+      copy:
+        src: ../auth-proxy/deployment/
+        dest: roles/auth-proxy
+      tags: auth-proxy
+
+    - name: "deploy auth-proxy"
+      include_role:
+        name: auth-proxy
+      tags: auth-proxy
+
+    - name: "copy frontend role into deployment"
+      connection: local
+      copy:
+        src: ../frontend/deployment/
+        dest: roles/frontend
+      tags: frontend
+
+    - name: "deploy frontend"
+      include_role:
+        name: frontend
+      tags: frontend
+
+    - name: "copy backend role into deployment"
+      connection: local
+      copy:
+        src: ../backend/deployment/
+        dest: roles/backend
+      tags: backend
+
+    - name: "deploy backend"
+      include_role:
+        name: backend
+      tags: backend

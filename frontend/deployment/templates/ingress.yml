@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+  namespace: default
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-to-https@kubernetescrd
+spec:
+  tls:
+    - hosts:
+        - "{{ base_domain }}"
+      secretName: frontend
+  rules:
+    - host: "{{ base_domain }}"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+---
+

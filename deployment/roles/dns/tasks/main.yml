@@ -1,0 +1,30 @@
+- name: "Create a domain"
+  community.digitalocean.digital_ocean_domain:
+    state: present
+    name: "{{ base_domain }}"
+    oauth_token: "{{ digital_ocean_token }} | trim"
+  tags: infrastructure
+
+- name: "Add dns domain entry for cluster {{ base_domain }}"
+  community.digitalocean.digital_ocean_domain_record:
+    state: present
+    domain: "{{ base_domain }}"
+    name: "@"
+    force_update: true
+    type: A
+    data: "{{ hostvars[project_name + '-master-0']['ansible_host'] }}"
+    ttl: 300
+    oauth_token: "{{ digital_ocean_token }} | trim"
+  tags: infrastructure
+
+- name: "Add dns domain entry for *.{{ base_domain }}"
+  community.digitalocean.digital_ocean_domain_record:
+      state: present
+      domain: "{{ base_domain }}"
+      name: "*"
+      force_update: true
+      type: A
+      data: "{{ hostvars[project_name + '-master-0']['ansible_host'] }}"
+      ttl: 300
+      oauth_token: "{{ digital_ocean_token }} | trim"
+  tags: infrastructure

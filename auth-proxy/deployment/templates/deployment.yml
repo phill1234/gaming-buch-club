@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-proxy
+  namespace: default
+  labels:
+    app: auth-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-proxy
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: auth-proxy
+        triggerUpdateLabel: "{{ ansible_date_time.iso8601_basic }}"
+    spec:
+      containers:
+      - image: {{docker_registry_host}}/{{auth_proxy_image_name}}:{{ auth_proxy_version }}
+        name: auth-proxy
+        env:
+        - name: JWKS_URL
+          value: "{{ jwks_url }}"
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9090
+      imagePullSecrets:
+        - name: github-container-registry
