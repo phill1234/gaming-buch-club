@@ -1,4 +1,3 @@
-# refactor to user k8s core module
 - name: "apply postgres secrets"
   k8s:
     state: present

@@ -1,4 +1,3 @@
-# refactored to use k8s core module
 - name: "apply docker secrets"
   k8s:
     state: present

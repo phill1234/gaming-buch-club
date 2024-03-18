@@ -1,4 +1,3 @@
-# refactored to use k8s core module
 - name: "deploy hetzner-csi-provider secrets"
   k8s:
     state: present

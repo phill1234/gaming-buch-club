@@ -1,5 +1,3 @@
-# refactor to use kubernetes core modules
-
 - name: "apply auth-proxy traefik middleware"
   k8s:
     state: present
