@@ -1,4 +1,3 @@
-# refactor to use k8s core module
 - name: "apply traefik middleware"
   k8s:
     state: present
