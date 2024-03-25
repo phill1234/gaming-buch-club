@@ -1,0 +1,17 @@
+- name: "deploy hetzner secrets"
+  k8s:
+    state: present
+    definition: "{{lookup('template', 'secrets.yml') }}"
+  tags: hetzner-csi-provider
+
+- name: "add hetzner helm repository"
+  kubernetes.core.helm_repository:
+    name: "hcloud"
+    repo_url: "https://charts.hetzner.cloud"
+    state: "present"
+
+- name: "install hetzner-cloud-controller with helm"
+  kubernetes.core.helm:
+    name: hcloud-cloud-controller-manager
+    chart_ref: hcloud/hcloud-cloud-controller-manager
+    release_namespace: kube-system

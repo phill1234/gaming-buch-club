@@ -12,7 +12,7 @@
     name: "@"
     force_update: true
     type: A
-    data: "{{ hostvars[project_name + '-master-0']['ansible_host'] }}"
+    data: "{{ loadbalancer_ip }}"
     ttl: 300
     oauth_token: "{{ digital_ocean_token }} | trim"
   tags: infrastructure
@@ -24,7 +24,7 @@
       name: "*"
       force_update: true
       type: A
-      data: "{{ hostvars[project_name + '-master-0']['ansible_host'] }}"
+      data: "{{ loadbalancer_ip }}"
       ttl: 300
       oauth_token: "{{ digital_ocean_token }} | trim"
   tags: infrastructure

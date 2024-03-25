@@ -1,12 +1,12 @@
 - name: "install master k3s node"
-  shell: "curl -sfL https://get.k3s.io | sh -s - server --cluster-init"
+  shell: "curl -sfL https://get.k3s.io | sh -s - --cluster-init {% if create_load_balancer %}--disable=servicelb{% endif %}"
   environment:
     K3S_TOKEN: "{{ k3s_token }}"
     INSTALL_K3S_EXEC: "--node-label type=master --node-taint node.kubernetes.io/unschedulable:NoSchedule"
   when: labels.get("type") == "master" and inventory_hostname == project_name + '-master-0'
 
 - name: "add other master node to cluster"
-  shell: "curl -sfL https://get.k3s.io | sh -s - server --server https://{{ hostvars[project_name + '-master-0']['ansible_host'] }}:6443"
+  shell: "curl -sfL https://get.k3s.io | sh -s - server --server https://{{ hostvars[project_name + '-master-0']['ansible_host'] }}:6443 {% if create_load_balancer %}--disable=servicelb{% endif %}"
   environment:
     K3S_TOKEN: "{{ k3s_token }}"
     INSTALL_K3S_EXEC: "--node-label type=master --node-taint node.kubernetes.io/unschedulable:NoSchedule"

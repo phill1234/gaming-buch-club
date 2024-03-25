@@ -2,6 +2,8 @@ env: production
 
 base_domain: gamingbuchclub.de
 
+create_load_balancer: true
+
 # Server
 k3s_token: !vault |
   $ANSIBLE_VAULT;1.1;AES256
@@ -11,7 +13,7 @@ k3s_token: !vault |
   3636616130376536650a653237373564633433613332386234323230306565653966383733333831
   32643331393364643236393035303165626637363838663661356638346535383465
 
-master_count: 1
+master_count: 2
 worker_count: 0
 
 docker_registry_host: ghcr.io/phill1234

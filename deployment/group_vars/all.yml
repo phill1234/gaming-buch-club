@@ -1,6 +1,8 @@
 # Token for the Project Folder
 project_name: gaming-buch-club
 
+create_load_balancer: false
+
 frontend_version: latest
 
 backend_version: latest

@@ -15,6 +15,7 @@
   kubernetes.core.k8s:
     state: present
     src: ~/cert-manager.yaml
+    wait: true
   tags: cert-manager
 
 - name: "apply digitalocean secret"

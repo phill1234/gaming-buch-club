@@ -13,8 +13,15 @@
         node_type: master
       tags: infrastructure
 
-    - include_role:
+    - import_role:
+        name: "hetzner-loadbalancer"
+      when: create_load_balancer is defined and create_load_balancer
+      tags: infrastructure
+
+    - import_role:
         name: "dns"
+      vars:
+        loadbalancer_ip: "{{ load_balancer_result.hcloud_load_balancer.ipv4_address | default(hostvars[project_name + '-master-0']['ansible_host'])}}"
       tags: infrastructure
 
 # CHECK INFRASTRUCTURE READY AND PROVISION EVERYTHING WE NEED
@@ -45,6 +52,12 @@
         name: python
       tags: infrastructure
 
+    - import_role:
+        name: "ingress"
+      vars:
+        loadbalancer_ip: "{{ hostvars['provision-infrastructure']['load_balancer_result']['hcloud_load_balancer']['ipv4_address'] }}"
+      when: create_load_balancer is defined and create_load_balancer
+      tags: infrastructure
 
 # DEPLOYMENT OF SERVICES
 - hosts: hcloud_type_master
